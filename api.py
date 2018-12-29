@@ -10,6 +10,7 @@ class Recommender(object):
         self.url = 'https://api.spotify.com/v1/'
 
         self._artist_ids = []
+        self._track_ids = []
         self._genres = []
         self._limit = 20
 
@@ -61,6 +62,27 @@ class Recommender(object):
         else:
             self._artist_ids.append(self._lookup_artist_id(artists))
 
+    @property
+    def tracks(self):
+        return self._track_ids
+
+    @tracks.setter
+    def tracks(self, tracks):
+        self._artist_ids = []
+        if isinstance(tracks, list):
+            for track in tracks:
+                self._track_ids.append(self._lookup_track_id(track))
+        else:
+            self._track_ids.append(self._lookup_track_id(tracks))
+
+    def _lookup_track_id(self, track):
+        params = {
+            'q': track,
+            'type': 'track'
+        }
+        json = self._make_request(endpoint='search', params=params)
+        return json['tracks']['items'][0]['id']
+
     def _lookup_artist_id(self, artist_name):
         params = {
             'q': artist_name,
@@ -73,10 +95,11 @@ class Recommender(object):
         params = {
             'seed_artists': self._artist_ids,
             'seed_genres': self.genres,
+            'seed_tracks': self.tracks,
             'limit': self.limit
         }
-        json = self._make_request(endpoint='recommendations', params=params)
-        return json
+        recs = self._make_request(endpoint='recommendations', params=params)
+        return recs
 
     def _make_request(self, endpoint, params):
         response = requests.get(self.url + endpoint, params=params, headers=self.headers)
