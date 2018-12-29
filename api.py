@@ -4,6 +4,11 @@ from auth import ClientCredentialsFlow
 
 class Recommender(object):
     def __init__(self, client_id=None, client_secret=None):
+        """
+        https://developer.spotify.com/documentation/web-api/reference/browse/get-recommendations/
+        :param client_id
+        :param client_secret
+        """
         auth = ClientCredentialsFlow(client_id, client_secret)
         self.token = auth.get_access_token()
 
@@ -13,6 +18,7 @@ class Recommender(object):
         self._track_ids = []
         self._genres = []
         self._limit = 20
+        self._tunable_track_attributes = {}
 
         self.headers = {
             'Authorization': 'Bearer ' + self.token
@@ -24,6 +30,14 @@ class Recommender(object):
         if self._available_genre_seeds is None:
             self._available_genre_seeds = self._make_request('recommendations/available-genre-seeds', params=None)
         return genre in self._available_genre_seeds['genres']
+
+    @property
+    def tunable_track_attributes(self):
+        return self._tunable_track_attributes
+
+    @tunable_track_attributes.setter
+    def tunable_track_attributes(self, tunable_track_attributes):
+        self._tunable_track_attributes = tunable_track_attributes
 
     @property
     def limit(self):
@@ -41,9 +55,11 @@ class Recommender(object):
     def genres(self, genres):
         if isinstance(genres, list):
             for genre in genres:
+                genre = genre.lower()
                 if self._is_genre_seed_available(genre):
                     self._genres.append(genre)
         else:
+            genres = genres.lower()
             if self._is_genre_seed_available(genres):
                 self._genres.append(genres)
         if not self._genres:
@@ -98,6 +114,7 @@ class Recommender(object):
             'seed_tracks': self.tracks,
             'limit': self.limit
         }
+        params.update(self.tunable_track_attributes)
         recs = self._make_request(endpoint='recommendations', params=params)
         return recs
 
@@ -107,4 +124,5 @@ class Recommender(object):
             raise Exception(response.reason)
         json = response.json()
         return json
+
 
