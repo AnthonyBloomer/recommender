@@ -1,16 +1,45 @@
 import requests
 import logging
-from auth import ClientCredentialsFlow
+import base64
+import six
+import os
+
+
+class _ClientCredentialsFlow(object):
+    OAUTH_TOKEN_URL = 'https://accounts.spotify.com/api/token'
+
+    def __init__(self, client_id=None, client_secret=None):
+        if not client_id:
+            client_id = os.getenv('SPOTIFY_CLIENT_ID')
+
+        if not client_secret:
+            client_secret = os.getenv('SPOTIFY_CLIENT_SECRET')
+
+        if not client_id or not client_secret:
+            raise Exception('A client ID and client secret is required.')
+
+        self.client_id = client_id
+        self.client_secret = client_secret
+
+        self.token_info = None
+
+    def _make_authorization_header(self):
+        auth_header = base64.b64encode(six.text_type(self.client_id + ':' + self.client_secret).encode('ascii'))
+        return {'Authorization': 'Basic %s' % auth_header.decode('ascii')}
+
+    def get_access_token(self):
+        payload = {'grant_type': 'client_credentials'}
+        headers = self._make_authorization_header()
+        response = requests.post(self.OAUTH_TOKEN_URL, data=payload, headers=headers, verify=True)
+        if response.status_code != 200:
+            raise Exception(response.reason)
+        token_info = response.json()
+        return token_info['access_token']
 
 
 class Recommender(object):
     def __init__(self, client_id=None, client_secret=None):
-        """
-        https://developer.spotify.com/documentation/web-api/reference/browse/get-recommendations/
-        :param client_id
-        :param client_secret
-        """
-        auth = ClientCredentialsFlow(client_id, client_secret)
+        auth = _ClientCredentialsFlow(client_id, client_secret)
         self.token = auth.get_access_token()
 
         self.url = 'https://api.spotify.com/v1/'
@@ -31,15 +60,13 @@ class Recommender(object):
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger("music-recommender")
 
-    def available_seed_genres(self):
-        if self._available_genre_seeds is None:
-            self._available_genre_seeds = self._make_request('recommendations/available-genre-seeds', params=None)
-        return self._available_genre_seeds
+    @property
+    def limit(self):
+        return self._limit
 
-    def _is_genre_seed_available(self, genre):
-        if self._available_genre_seeds is None:
-            self._available_genre_seeds = self.available_seed_genres()
-        return genre in self._available_genre_seeds['genres']
+    @limit.setter
+    def limit(self, limit):
+        self._limit = limit
 
     @property
     def market(self):
@@ -57,13 +84,15 @@ class Recommender(object):
     def tunable_track_attributes(self, tunable_track_attributes):
         self._tunable_track_attributes = tunable_track_attributes
 
-    @property
-    def limit(self):
-        return self._limit
+    def available_seed_genres(self):
+        if self._available_genre_seeds is None:
+            self._available_genre_seeds = self._make_request('recommendations/available-genre-seeds', params=None)
+        return self._available_genre_seeds
 
-    @limit.setter
-    def limit(self, limit):
-        self._limit = limit
+    def _is_genre_seed_available(self, genre):
+        if self._available_genre_seeds is None:
+            self._available_genre_seeds = self.available_seed_genres()
+        return genre in self._available_genre_seeds['genres']
 
     @property
     def genres(self):
@@ -113,27 +142,6 @@ class Recommender(object):
         else:
             self._track_ids.append(self._lookup_track_id(tracks))
 
-    def _lookup(self, term, lookup_type):
-        params = {
-            'q': term,
-            'type': lookup_type
-        }
-        return self._make_request(endpoint='search', params=params)
-
-    def _lookup_track_id(self, track):
-        tracks = self._lookup(term=track, lookup_type='track')
-        if len(tracks['tracks']['items']):
-            return tracks['tracks']['items'][0]['id']
-        else:
-            self.logger.warning("No results found for: %s" % track)
-
-    def _lookup_artist_id(self, artist_name):
-        artists = self._lookup(term=artist_name, lookup_type='artist')
-        if len(artists['artists']['items']):
-            return artists['artists']['items'][0]['id']
-        else:
-            self.logger.warning("No results found for: %s" % artist_name)
-
     def find_recommendations(self):
         if not self._artist_ids and not self.genres and not self.tracks:
             raise Exception("At least one artist, genre, or track is required.")
@@ -147,11 +155,32 @@ class Recommender(object):
         recs = self._make_request(endpoint='recommendations', params=params)
         return recs
 
+    def _lookup(self, term, lookup_type):
+        params = {
+            'q': term,
+            'type': lookup_type
+        }
+        return self._make_request(endpoint='search', params=params)
+
+    def _lookup_track_id(self, track):
+        tracks = self._lookup(term=track, lookup_type='track')
+
+        if len(tracks['tracks']['items']):
+            return tracks['tracks']['items'][0]['id']
+
+        self.logger.warning("No results found for: %s" % track)
+
+    def _lookup_artist_id(self, artist_name):
+        artists = self._lookup(term=artist_name, lookup_type='artist')
+
+        if len(artists['artists']['items']):
+            return artists['artists']['items'][0]['id']
+
+        self.logger.warning("No results found for: %s" % artist_name)
+
     def _make_request(self, endpoint, params):
         response = requests.get(self.url + endpoint, params=params, headers=self.headers)
         if response.status_code != 200:
             raise Exception(response.reason)
         json = response.json()
         return json
-    
-    
