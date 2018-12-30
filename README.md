@@ -1,4 +1,4 @@
-# recommender-api
+# recommender
 
 Python client for the [Spotify Recommendations API](https://developer.spotify.com/documentation/web-api/reference/browse/get-recommendations/). 
 
