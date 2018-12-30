@@ -12,6 +12,8 @@ Example:
 
 ``` python
 
+from recommender.api import Recommender
+
 recommender = Recommender()
 recommender.artists = 'Johnny Cash'
 recommender.genres = [
@@ -24,6 +26,6 @@ recommender.tunable_track_attributes = {
 
 recommendations = recommender.find_recommendations()
 for recommendation in recommendations['tracks']:
-    print("%s - %s" % (recommendation['album']['name'], recommendation['album']['artists'][0]['name']))
+    print("%s - %s" % (recommendation['name'], recommendation['artists'][0]['name']))
 
 ```
