@@ -1,7 +1,6 @@
 import requests
 from auth import ClientCredentialsFlow
 
-
 class Recommender(object):
     def __init__(self, client_id=None, client_secret=None):
         """
@@ -26,9 +25,12 @@ class Recommender(object):
 
         self._available_genre_seeds = None
 
-    def _is_genre_seed_available(self, genre):
+    def available_seed_genres(self):
         if self._available_genre_seeds is None:
             self._available_genre_seeds = self._make_request('recommendations/available-genre-seeds', params=None)
+        return self._available_genre_seeds
+
+    def _is_genre_seed_available(self, genre):
         return genre in self._available_genre_seeds['genres']
 
     @property
@@ -124,5 +126,3 @@ class Recommender(object):
             raise Exception(response.reason)
         json = response.json()
         return json
-
-
