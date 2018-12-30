@@ -110,7 +110,7 @@ class Recommender(object):
             if self._is_genre_seed_available(genres):
                 self._genres.append(genres)
         if not self._genres:
-            raise Exception("No matching seeds found for given genre.")
+            self.logger.warning("No matching seeds found for given genre.")
 
     @property
     def artists(self):
@@ -128,6 +128,8 @@ class Recommender(object):
             artist = self._lookup_artist_id(artists)
             if artist:
                 self._artist_ids.append(artist)
+        if not self._artist_ids:
+            self.logger.warning("No matching seeds found for given artist.")
 
     @property
     def tracks(self):
@@ -135,12 +137,14 @@ class Recommender(object):
 
     @tracks.setter
     def tracks(self, tracks):
-        self._artist_ids = []
+        self._track_ids = []
         if isinstance(tracks, list):
             for track in tracks:
                 self._track_ids.append(self._lookup_track_id(track))
         else:
             self._track_ids.append(self._lookup_track_id(tracks))
+        if not self._track_ids:
+            self.logger.warning("No matching seeds found for given track.")
 
     def find_recommendations(self):
         if not self._artist_ids and not self.genres and not self.tracks:
