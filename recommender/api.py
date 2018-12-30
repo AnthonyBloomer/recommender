@@ -66,6 +66,8 @@ class Recommender(object):
 
     @limit.setter
     def limit(self, limit):
+        if limit > 100:
+            self.logger.warning("Maximum target size is 100.")
         self._limit = limit
 
     @property
@@ -81,17 +83,17 @@ class Recommender(object):
         return self._track_attributes
 
     @track_attributes.setter
-    def track_attributes(self, tunable_track_attributes):
-        self._track_attributes = tunable_track_attributes
+    def track_attributes(self, track_attributes):
+        self._track_attributes = track_attributes
 
-    def available_seed_genres(self):
+    def available_genre_seeds(self):
         if self._available_genre_seeds is None:
             self._available_genre_seeds = self._make_request('recommendations/available-genre-seeds', params=None)
         return self._available_genre_seeds
 
     def _is_genre_seed_available(self, genre):
         if self._available_genre_seeds is None:
-            self._available_genre_seeds = self.available_seed_genres()
+            self._available_genre_seeds = self.available_genre_seeds()
         return genre in self._available_genre_seeds['genres']
 
     @property
