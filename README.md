@@ -20,7 +20,7 @@ recommender.genres = [
     'country',
     'party'
 ]
-recommender.tunable_track_attributes = {
+recommender.track_attributes = {
     'danceability': 1.0
 }
 

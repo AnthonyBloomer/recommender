@@ -48,7 +48,7 @@ class Recommender(object):
         self._track_ids = []
         self._genres = []
         self._limit = 20
-        self._tunable_track_attributes = {}
+        self._track_attributes = {}
         self._market = ""
 
         self.headers = {
@@ -77,12 +77,12 @@ class Recommender(object):
         self._market = market
 
     @property
-    def tunable_track_attributes(self):
-        return self._tunable_track_attributes
+    def track_attributes(self):
+        return self._track_attributes
 
-    @tunable_track_attributes.setter
-    def tunable_track_attributes(self, tunable_track_attributes):
-        self._tunable_track_attributes = tunable_track_attributes
+    @track_attributes.setter
+    def track_attributes(self, tunable_track_attributes):
+        self._track_attributes = tunable_track_attributes
 
     def available_seed_genres(self):
         if self._available_genre_seeds is None:
@@ -148,14 +148,14 @@ class Recommender(object):
 
     def find_recommendations(self):
         if not self._artist_ids and not self.genres and not self.tracks:
-            raise Exception("At least one artist, genre, or track is required.")
+            raise Exception("At least one artist, genre, or track seed is required.")
         params = {
             'seed_artists': self._artist_ids,
             'seed_genres': self.genres,
             'seed_tracks': self.tracks,
             'limit': self.limit
         }
-        params.update(self.tunable_track_attributes)
+        params.update(self.track_attributes)
         recs = self._make_request(endpoint='recommendations', params=params)
         return recs
 
@@ -185,6 +185,7 @@ class Recommender(object):
     def _make_request(self, endpoint, params):
         response = requests.get(self.url + endpoint, params=params, headers=self.headers)
         if response.status_code != 200:
+            self.logger.error(response.content)
             raise Exception(response.reason)
         json = response.json()
         return json
