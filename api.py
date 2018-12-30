@@ -1,5 +1,7 @@
 import requests
+import logging
 from auth import ClientCredentialsFlow
+
 
 class Recommender(object):
     def __init__(self, client_id=None, client_secret=None):
@@ -18,6 +20,7 @@ class Recommender(object):
         self._genres = []
         self._limit = 20
         self._tunable_track_attributes = {}
+        self._market = ""
 
         self.headers = {
             'Authorization': 'Bearer ' + self.token
@@ -25,13 +28,26 @@ class Recommender(object):
 
         self._available_genre_seeds = None
 
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger("music-recommender")
+
     def available_seed_genres(self):
         if self._available_genre_seeds is None:
             self._available_genre_seeds = self._make_request('recommendations/available-genre-seeds', params=None)
         return self._available_genre_seeds
 
     def _is_genre_seed_available(self, genre):
+        if self._available_genre_seeds is None:
+            self._available_genre_seeds = self.available_seed_genres()
         return genre in self._available_genre_seeds['genres']
+
+    @property
+    def market(self):
+        return self._market
+
+    @market.setter
+    def market(self, market):
+        self._market = market
 
     @property
     def tunable_track_attributes(self):
@@ -76,9 +92,13 @@ class Recommender(object):
         self._artist_ids = []
         if isinstance(artists, list):
             for artist in artists:
-                self._artist_ids.append(self._lookup_artist_id(artist))
+                artist = self._lookup_artist_id(artist)
+                if artist:
+                    self._artist_ids.append(artist)
         else:
-            self._artist_ids.append(self._lookup_artist_id(artists))
+            artist = self._lookup_artist_id(artists)
+            if artist:
+                self._artist_ids.append(artist)
 
     @property
     def tracks(self):
@@ -93,23 +113,30 @@ class Recommender(object):
         else:
             self._track_ids.append(self._lookup_track_id(tracks))
 
-    def _lookup_track_id(self, track):
+    def _lookup(self, term, lookup_type):
         params = {
-            'q': track,
-            'type': 'track'
+            'q': term,
+            'type': lookup_type
         }
-        json = self._make_request(endpoint='search', params=params)
-        return json['tracks']['items'][0]['id']
+        return self._make_request(endpoint='search', params=params)
+
+    def _lookup_track_id(self, track):
+        tracks = self._lookup(term=track, lookup_type='track')
+        if len(tracks['tracks']['items']):
+            return tracks['tracks']['items'][0]['id']
+        else:
+            self.logger.warning("No results found for: %s" % track)
 
     def _lookup_artist_id(self, artist_name):
-        params = {
-            'q': artist_name,
-            'type': 'artist'
-        }
-        json = self._make_request(endpoint='search', params=params)
-        return json['artists']['items'][0]['id']
+        artists = self._lookup(term=artist_name, lookup_type='artist')
+        if len(artists['artists']['items']):
+            return artists['artists']['items'][0]['id']
+        else:
+            self.logger.warning("No results found for: %s" % artist_name)
 
     def find_recommendations(self):
+        if not self._artist_ids and not self.genres and not self.tracks:
+            raise Exception("At least one artist, genre, or track is required.")
         params = {
             'seed_artists': self._artist_ids,
             'seed_genres': self.genres,
@@ -126,3 +153,5 @@ class Recommender(object):
             raise Exception(response.reason)
         json = response.json()
         return json
+    
+    
