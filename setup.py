@@ -46,7 +46,7 @@ class PublishCommand(Command):
 
 
 setup(name='music-recommender',
-      version='1.0.0',
+      version='1.0.1',
       description='A Python client for the Spotify Recommendations API.',
       long_description=long_descr,
       url='https://github.com/AnthonyBloomer/recommender',
@@ -56,7 +56,7 @@ setup(name='music-recommender',
       license='MIT',
       packages=['recommender'],
       install_requires=[
-          'requests'
+          'requests',
           'six'
       ],
       classifiers=[
