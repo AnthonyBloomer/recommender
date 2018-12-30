@@ -1,4 +1,4 @@
-from api import Recommender
+from recommender.api import Recommender
 
 if __name__ == '__main__':
     recommender = Recommender()
