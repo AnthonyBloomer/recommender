@@ -1,1 +1,1 @@
-from api import Recommender
+from .api import Recommender
